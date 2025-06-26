@@ -65,6 +65,10 @@ extern int sqfs_opt_proc(void* data, const char* arg, int key, struct fuse_args*
 #include <dirent.h>
 #include <ctype.h>
 
+#if defined(__FreeBSD__)
+    #include <sys/sysctl.h>
+#endif
+
 const char* fusermountPath = NULL;
 
 typedef struct {
@@ -1473,7 +1477,19 @@ int main(int argc, char* argv[]) {
      * functionality specifically for builds used by appimaged.
      */
     if (getenv("TARGET_APPIMAGE") == NULL) {
+#if defined(__linux__)
         strcpy(appimage_path, "/proc/self/exe");
+#elif defined(__FreeBSD__)
+        int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+        size_t len = PATH_MAX;
+
+        if (sysctl(mib, 4, appimage_path, &len, 0, 0) != 0) {
+            perror("Failed to obtain absolute path");
+            exit(EXIT_EXECERROR);
+        }
+#else
+    #error "Unrecognized target system. Cannot figure out AppImage path."
+#endif
         strcpy(argv0_path, argv[0]);
     } else {
         strcpy(appimage_path, getenv("TARGET_APPIMAGE"));
@@ -1729,6 +1745,7 @@ int main(int argc, char* argv[]) {
     if (pid == 0) {
         /* in child */
 
+#if defined(__linux__)
         fusermountPath = getenv("FUSERMOUNT_PROG");
         if (fusermountPath == NULL) {
             char* new_prog = find_fusermount(verbose);
@@ -1742,6 +1759,7 @@ int main(int argc, char* argv[]) {
                 printf("Error: No suitable fusermount binary found on the $PATH\n");
             }
         }
+#endif
 
         char* child_argv[5];
 
@@ -1837,6 +1855,16 @@ int main(int argc, char* argv[]) {
         char filename[mount_dir_size + 8]; /* enough for mount_dir + "/AppRun" */
         strcpy(filename, mount_dir);
         strcat(filename, "/AppRun");
+
+        /* Wait for mounted image to become available (up to 1s) */
+        for (int i = 0; i < 100; i++) {
+            struct stat s;
+            if (stat(filename, &s) == 0)
+                break;
+
+            /* Wait 10ms */
+            usleep(10000);
+        }
 
         /* TODO: Find a way to get the exit status and/or output of this */
         execv(filename, real_argv);
