@@ -37,7 +37,7 @@ wget "https://github.com/vasi/squashfuse/releases/download/0.6.1/squashfuse-0.6.
 echo "7b18a58c40a3161b5c329ae925b72336b5316941f906b446b8ed6c5a90989f8c  squashfuse-0.6.1.tar.gz" | sha256sum -c -
 tar xf squashfuse-*.tar.gz
 pushd squashfuse-*/
-./configure LDFLAGS="-static"
+./configure LDFLAGS="-static" --without-lz4 --without-lzo --without-xz
 make -j"$(nproc)"
 make install
 /usr/bin/install -c -m 644 ./*.h '/usr/local/include/squashfuse'
