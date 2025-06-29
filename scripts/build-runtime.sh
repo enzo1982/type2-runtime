@@ -28,9 +28,9 @@ strip --strip-debug --strip-unneeded runtime
 ls -lh runtime runtime.debug
 
 # append architecture prefix
-# since uname gives the kernel architecture but we need the userland architecture, we check /bin/bash
+# since uname gives the kernel architecture but we need the userland architecture, we check /bin/sh
 # all we have to do is convert uname's expected output to AppImage's semi-official suffix style
-runtime="$(file -L /bin/bash)"
+runtime="$(file -L /bin/sh)"
 
 if [[ "$runtime" =~ 80386 ]]; then
     architecture=i686
